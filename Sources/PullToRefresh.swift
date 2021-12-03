@@ -6,10 +6,7 @@ private struct PullToRefresh: UIViewRepresentable {
     @Binding var isShowing: Bool
     let onRefresh: () -> Void
     
-    public init(
-        isShowing: Binding<Bool>,
-        onRefresh: @escaping () -> Void
-    ) {
+    public init(isShowing: Binding<Bool>, onRefresh: @escaping () -> Void) {
         _isShowing = isShowing
         self.onRefresh = onRefresh
     }
@@ -18,10 +15,7 @@ private struct PullToRefresh: UIViewRepresentable {
         let onRefresh: () -> Void
         let isShowing: Binding<Bool>
         
-        init(
-            onRefresh: @escaping () -> Void,
-            isShowing: Binding<Bool>
-        ) {
+        init(onRefresh: @escaping () -> Void, isShowing: Binding<Bool>) {
             self.onRefresh = onRefresh
             self.isShowing = isShowing
         }
@@ -39,11 +33,10 @@ private struct PullToRefresh: UIViewRepresentable {
         view.isUserInteractionEnabled = false
         return view
     }
-    
-    private func tableView(entry: UIView) -> UITableView? {
-        
+
+    private func scrollView(entry: UIView) -> UIScrollView? {
         // Search in ancestors
-        if let tableView = Introspect.findAncestor(ofType: UITableView.self, from: entry) {
+        if let tableView = Introspect.findAncestor(ofType: UIScrollView.self, from: entry) {
             return tableView
         }
 
@@ -52,40 +45,43 @@ private struct PullToRefresh: UIViewRepresentable {
         }
 
         // Search in siblings
-        return Introspect.previousSibling(containing: UITableView.self, from: viewHost)
+        return Introspect.previousSibling(containing: UIScrollView.self, from: viewHost)
     }
 
     public func updateUIView(_ uiView: UIView, context: UIViewRepresentableContext<PullToRefresh>) {
-        
-        DispatchQueue.main.asyncAfter(deadline: .now()) {
-            
-            guard let tableView = self.tableView(entry: uiView) else {
-                return
-            }
-            
-            if let refreshControl = tableView.refreshControl {
-                if self.isShowing {
-                    refreshControl.beginRefreshing()
-                } else {
-                    refreshControl.endRefreshing()
-                }
-                return
-            }
-            
+        guard let scrollView = scrollView(entry: uiView) else {
+            return
+        }
+
+        if scrollView.refreshControl == nil {
             let refreshControl = UIRefreshControl()
-            refreshControl.addTarget(context.coordinator, action: #selector(Coordinator.onValueChanged), for: .valueChanged)
-            tableView.refreshControl = refreshControl
+            refreshControl.addTarget(context.coordinator,
+                                     action: #selector(Coordinator.onValueChanged),
+                                     for: .valueChanged)
+            scrollView.refreshControl = refreshControl
+        }
+
+        if let refreshControl = scrollView.refreshControl {
+            if isShowing {
+                if !refreshControl.isRefreshing {
+                    let y = scrollView.contentOffset.y - refreshControl.bounds.size.height
+                    scrollView.setContentOffset(CGPoint(x: 0, y: y), animated: true)
+                }
+                refreshControl.beginRefreshing()
+            } else if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
         }
     }
     
     public func makeCoordinator() -> Coordinator {
-        return Coordinator(onRefresh: onRefresh, isShowing: $isShowing)
+        Coordinator(onRefresh: onRefresh, isShowing: $isShowing)
     }
 }
 
 extension View {
     public func pullToRefresh(isShowing: Binding<Bool>, onRefresh: @escaping () -> Void) -> some View {
-        return overlay(
+        overlay(
             PullToRefresh(isShowing: isShowing, onRefresh: onRefresh)
                 .frame(width: 0, height: 0)
         )

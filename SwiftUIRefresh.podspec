@@ -1,12 +1,12 @@
 Pod::Spec.new do |spec|
   spec.name = 'SwiftUIRefresh'
-  spec.version = '0.0.3'
+  spec.version = '0.0.4'
   spec.license = { type: 'MIT' }
-  spec.homepage = 'https://github.com/siteline/SwiftUIRefresh.git'
+  spec.homepage = 'https://github.com/fantasmoio/SwiftUIRefresh.git'
   spec.authors = { 'Lois Di Qual' => 'lois@siteline.com' }
   spec.summary = 'Native Pull To Refresh in SwiftUI'
   spec.source = {
-    git: 'https://github.com/siteline/SwiftUIRefresh.git',
+    git: 'https://github.com/fantasmoio/SwiftUIRefresh.git',
     tag: spec.version
   }
   spec.source_files = 'Sources/**/*.swift'
