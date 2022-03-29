@@ -34,42 +34,32 @@ private struct PullToRefresh: UIViewRepresentable {
         return view
     }
 
-    private func scrollView(entry: UIView) -> UIScrollView? {
-        // Search in ancestors
-        if let tableView = Introspect.findAncestor(ofType: UIScrollView.self, from: entry) {
-            return tableView
-        }
-
-        guard let viewHost = Introspect.findViewHost(from: entry) else {
-            return nil
-        }
-
-        // Search in siblings
-        return Introspect.previousSibling(containing: UIScrollView.self, from: viewHost)
-    }
-
     public func updateUIView(_ uiView: UIView, context: UIViewRepresentableContext<PullToRefresh>) {
-        guard let scrollView = scrollView(entry: uiView) else {
-            return
-        }
+        DispatchQueue.main.async { [isShowing] in
+            guard let scrollView: UIScrollView = TargetViewSelector.ancestorOrSiblingContaining(from: uiView) else {
+                return
+            }
 
-        if scrollView.refreshControl == nil {
-            let refreshControl = UIRefreshControl()
-            refreshControl.addTarget(context.coordinator,
-                                     action: #selector(Coordinator.onValueChanged),
-                                     for: .valueChanged)
-            scrollView.refreshControl = refreshControl
-        }
+            if scrollView.refreshControl == nil {
+                let refreshControl = UIRefreshControl()
+                refreshControl.addTarget(context.coordinator,
+                                         action: #selector(Coordinator.onValueChanged),
+                                         for: .valueChanged)
+                scrollView.refreshControl = refreshControl
+            }
 
-        if let refreshControl = scrollView.refreshControl {
-            if isShowing {
-                if !refreshControl.isRefreshing {
-                    let y = scrollView.contentOffset.y - refreshControl.bounds.size.height
-                    scrollView.setContentOffset(CGPoint(x: 0, y: y), animated: true)
+            if let refreshControl = scrollView.refreshControl {
+                if isShowing {
+                    if !refreshControl.isRefreshing {
+                        let y = scrollView.contentOffset.y - refreshControl.bounds.size.height
+                        scrollView.setContentOffset(CGPoint(x: 0, y: y), animated: true)
+                        refreshControl.beginRefreshing()
+                    }
+                } else {
+                    if refreshControl.isRefreshing {
+                        refreshControl.endRefreshing()
+                    }
                 }
-                refreshControl.beginRefreshing()
-            } else if refreshControl.isRefreshing {
-                refreshControl.endRefreshing()
             }
         }
     }
@@ -81,9 +71,6 @@ private struct PullToRefresh: UIViewRepresentable {
 
 extension View {
     public func pullToRefresh(isShowing: Binding<Bool>, onRefresh: @escaping () -> Void) -> some View {
-        overlay(
-            PullToRefresh(isShowing: isShowing, onRefresh: onRefresh)
-                .frame(width: 0, height: 0)
-        )
+        inject(PullToRefresh(isShowing: isShowing, onRefresh: onRefresh))
     }
 }
